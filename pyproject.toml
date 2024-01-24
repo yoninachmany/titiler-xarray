@@ -25,6 +25,7 @@ classifiers = [
 ]
 dynamic = ["version"]
 dependencies = [
+    "arraylake",
     "cftime",
     "h5netcdf",
     "xarray",
@@ -35,8 +36,7 @@ dependencies = [
     "s3fs",
     "aiohttp",
     "requests",
-    "pydantic==2.0.2",
-    "titiler.core>=0.14.1,<0.15",
+    "titiler.core>=0.15.7",
     "pydantic-settings~=2.0",
     "pandas==1.5.3",
     "redis",
