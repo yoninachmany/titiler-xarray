@@ -141,7 +141,8 @@ def xarray_open_dataset(
         xr_open_args["zarr_version"] = 3
         xr_open_args["consolidated"] = False
         xr_open_args["inline_array"] = True
-        xr_open_args["chunks"] = {}
+        # TODO: figure out chunks.
+        # xr_open_args["chunks"] = {}
     ds = xarray.open_dataset(file_handler, **xr_open_args)
     if api_settings.enable_cache:
         # Serialize the dataset to bytes using pickle
