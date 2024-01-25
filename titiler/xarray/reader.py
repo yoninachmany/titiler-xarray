@@ -5,6 +5,7 @@ import pickle
 import re
 from typing import Any, Dict, List, Optional
 
+import arraylake
 import attr
 import fsspec
 import numpy
@@ -21,9 +22,10 @@ from titiler.xarray.settings import ApiSettings
 
 api_settings = ApiSettings()
 cache_client = get_redis()
+arraylake_client = arraylake.Client()
 
 
-def parse_protocol(src_path: str, reference: Optional[bool] = False):
+def parse_protocol(src_path: str, reference: Optional[bool] = False, arraylake_repo: Optional[str] = None):
     """
     Parse protocol from path.
     """
@@ -34,6 +36,8 @@ def parse_protocol(src_path: str, reference: Optional[bool] = False):
     # override protocol if reference
     if reference:
         protocol = "reference"
+    if arraylake_repo:
+        protocol = "arraylake"
     return protocol
 
 
@@ -55,6 +59,8 @@ def get_filesystem(
     protocol: str,
     xr_engine: str,
     anon: bool = True,
+    arraylake_repo: Optional[str] = None,
+    arraylake_ref: Optional[str] = None,
 ):
     """
     Get the filesystem for the given source path.
@@ -76,6 +82,11 @@ def get_filesystem(
             if xr_engine == "h5netcdf"
             else filesystem.get_mapper(src_path)
         )
+    elif protocol == "arraylake":
+        repo = arraylake_client.get_repo(arraylake_repo)
+        if arraylake_ref:
+            repo.checkout(arraylake_ref)
+        return repo.store
     else:
         raise ValueError(f"Unsupported protocol: {protocol}")
 
@@ -86,6 +97,8 @@ def xarray_open_dataset(
     reference: Optional[bool] = False,
     decode_times: Optional[bool] = True,
     consolidated: Optional[bool] = True,
+    arraylake_repo: Optional[str] = None,
+    arraylake_ref: Optional[str] = None,
 ) -> xarray.Dataset:
     """Open dataset."""
     # Generate cache key and attempt to fetch the dataset from cache
@@ -95,9 +108,9 @@ def xarray_open_dataset(
         if data_bytes:
             return pickle.loads(data_bytes)
 
-    protocol = parse_protocol(src_path, reference=reference)
+    protocol = parse_protocol(src_path, reference=reference, arraylake_repo=arraylake_repo)
     xr_engine = xarray_engine(src_path)
-    file_handler = get_filesystem(src_path, protocol, xr_engine)
+    file_handler = get_filesystem(src_path, protocol, xr_engine, arraylake_repo=arraylake_repo, arraylake_ref=arraylake_ref)
 
     # Arguments for xarray.open_dataset
     # Default args
@@ -122,6 +135,13 @@ def xarray_open_dataset(
     if reference:
         xr_open_args["consolidated"] = False
         xr_open_args["backend_kwargs"] = {"consolidated": False}
+    if protocol == "arraylake":
+        xr_open_args["group"] = src_path
+        xr_open_args["engine"] = "zarr"
+        xr_open_args["zarr_version"] = 3
+        xr_open_args["consolidated"] = False
+        xr_open_args["inline_array"] = True
+        xr_open_args["chunks"] = {}
     ds = xarray.open_dataset(file_handler, **xr_open_args)
     if api_settings.enable_cache:
         # Serialize the dataset to bytes using pickle
@@ -204,6 +224,8 @@ class ZarrReader(XarrayReader):
     decode_times: bool = attr.ib(default=False)
     group: Optional[Any] = attr.ib(default=None)
     consolidated: Optional[bool] = attr.ib(default=True)
+    arraylake_repo: Optional[Any] = attr.ib(default=None)
+    arraylake_ref: Optional[Any] = attr.ib(default=None)
 
     # xarray.DataArray options
     time_slice: Optional[str] = attr.ib(default=None)
@@ -232,6 +254,9 @@ class ZarrReader(XarrayReader):
                 group=self.group,
                 reference=self.reference,
                 consolidated=self.consolidated,
+                arraylake_repo=self.arraylake_repo,
+                arraylake_ref=self.arraylake_ref,
+
             ),
         )
         self.input = get_variable(
@@ -257,6 +282,8 @@ class ZarrReader(XarrayReader):
         group: Optional[Any] = None,
         reference: Optional[bool] = False,
         consolidated: Optional[bool] = True,
+        arraylake_repo: Optional[str] = None,
+        arraylake_ref: Optional[str] = None,
     ) -> List[str]:
         """List available variable in a dataset."""
         with xarray_open_dataset(
@@ -264,5 +291,7 @@ class ZarrReader(XarrayReader):
             group=group,
             reference=reference,
             consolidated=consolidated,
+            arraylake_repo=arraylake_repo,
+            arraylake_ref=arraylake_ref,
         ) as ds:
             return list(ds.data_vars)  # type: ignore

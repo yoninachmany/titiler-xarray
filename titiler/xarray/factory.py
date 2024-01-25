@@ -66,10 +66,27 @@ class ZarrTilerFactory(BaseTilerFactory):
                     description="Whether to expect and open zarr store with consolidated metadata",
                 ),
             ] = True,
+            arraylake_repo: Annotated[
+                Optional[str],
+                Query(
+                    description="Arraylake repo full name ([ORG]/[REPO])."
+                ),
+            ] = None,
+            arraylake_ref: Annotated[
+                Optional[str],
+                Query(
+                    description="Arraylake ref (branch, tag, or commit ID)."
+                ),
+            ] = None,
         ) -> List[str]:
             """return available variables."""
             return self.reader.list_variables(
-                url, group=group, reference=reference, consolidated=consolidated
+                url,
+                group=group,
+                reference=reference,
+                consolidated=consolidated,
+                arraylake_repo=arraylake_repo,
+                arraylake_ref=arraylake_ref,
             )
 
         @self.router.get(
@@ -120,6 +137,18 @@ class ZarrTilerFactory(BaseTilerFactory):
                     description="Whether to expect and open zarr store with consolidated metadata",
                 ),
             ] = True,
+            arraylake_repo: Annotated[
+                Optional[str],
+                Query(
+                    description="Arraylake repo full name ([ORG]/[REPO])."
+                ),
+            ] = None,
+            arraylake_ref: Annotated[
+                Optional[str],
+                Query(
+                    description="Arraylake ref (branch, tag, or commit ID)."
+                ),
+            ] = None,
         ) -> Info:
             """Return dataset's basic info."""
             with self.reader(
@@ -130,6 +159,8 @@ class ZarrTilerFactory(BaseTilerFactory):
                 decode_times=decode_times,
                 drop_dim=drop_dim,
                 consolidated=consolidated,
+                arraylake_repo=arraylake_repo,
+                arraylake_ref=arraylake_ref,
             ) as src_dst:
                 info = src_dst.info().model_dump()
                 if show_times and "time" in src_dst.input.dims:
@@ -229,6 +260,18 @@ class ZarrTilerFactory(BaseTilerFactory):
                     description="Whether to expect and open zarr store with consolidated metadata",
                 ),
             ] = True,
+            arraylake_repo: Annotated[
+                Optional[str],
+                Query(
+                    description="Arraylake repo full name ([ORG]/[REPO])."
+                ),
+            ] = None,
+            arraylake_ref: Annotated[
+                Optional[str],
+                Query(
+                    description="Arraylake ref (branch, tag, or commit ID)."
+                ),
+            ] = None,
         ) -> Response:
             """Create map tile from a dataset."""
             tms = self.supported_tms.get(tileMatrixSetId)
@@ -242,6 +285,8 @@ class ZarrTilerFactory(BaseTilerFactory):
                 time_slice=time_slice,
                 tms=tms,
                 consolidated=consolidated,
+                arraylake_repo=arraylake_repo,
+                arraylake_ref=arraylake_ref,
             ) as src_dst:
 
                 image = src_dst.tile(
@@ -348,6 +393,18 @@ class ZarrTilerFactory(BaseTilerFactory):
                     description="Whether to expect and open zarr store with consolidated metadata",
                 ),
             ] = True,
+            arraylake_repo: Annotated[
+                Optional[str],
+                Query(
+                    description="Arraylake repo full name ([ORG]/[REPO])."
+                ),
+            ] = None,
+            arraylake_ref: Annotated[
+                Optional[str],
+                Query(
+                    description="Arraylake ref (branch, tag, or commit ID)."
+                ),
+            ] = None,
         ) -> Dict:
             """Return TileJSON document for a dataset."""
             route_params = {
@@ -387,6 +444,8 @@ class ZarrTilerFactory(BaseTilerFactory):
                 decode_times=decode_times,
                 tms=tms,
                 consolidated=consolidated,
+                arraylake_repo=arraylake_repo,
+                arraylake_ref=arraylake_ref,
             ) as src_dst:
                 # see https://github.com/corteva/rioxarray/issues/645
                 minx, miny, maxx, maxy = zip(
@@ -433,6 +492,18 @@ class ZarrTilerFactory(BaseTilerFactory):
                     description="Select a specific zarr group from a zarr hierarchy, can be for pyramids or datasets. Can be used to open a dataset in HDF5 files."
                 ),
             ] = None,
+            arraylake_repo: Annotated[
+                Optional[str],
+                Query(
+                    description="Arraylake repo full name ([ORG]/[REPO])."
+                ),
+            ] = None,
+            arraylake_ref: Annotated[
+                Optional[str],
+                Query(
+                    description="Arraylake ref (branch, tag, or commit ID)."
+                ),
+            ] = None,
         ):
             with self.reader(
                 url,
@@ -440,6 +511,8 @@ class ZarrTilerFactory(BaseTilerFactory):
                 reference=reference,
                 consolidated=consolidated,
                 group=group,
+                arraylake_repo=arraylake_repo,
+                arraylake_ref=arraylake_ref,
             ) as src_dst:
                 boolean_mask = ~np.isnan(src_dst.input)
                 data_values = src_dst.input.values[boolean_mask]
@@ -486,6 +559,18 @@ class ZarrTilerFactory(BaseTilerFactory):
                     description="Whether to decode times",
                 ),
             ] = True,
+            arraylake_repo: Annotated[
+                Optional[str],
+                Query(
+                    description="Arraylake repo full name ([ORG]/[REPO])."
+                ),
+            ] = None,
+            arraylake_ref: Annotated[
+                Optional[str],
+                Query(
+                    description="Arraylake ref (branch, tag, or commit ID)."
+                ),
+            ] = None,
             drop_dim: Annotated[
                 Optional[str],
                 Query(description="Dimension to drop"),
