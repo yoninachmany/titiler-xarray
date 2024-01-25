@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from typing import Dict, List, Literal, Optional, Type
 from urllib.parse import urlencode
 
-import jinja2
 import numpy as np
 from fastapi import Depends, Path, Query
 from pydantic import conint
@@ -606,8 +605,7 @@ class ZarrTilerFactory(BaseTilerFactory):
         ):
             """Return map Viewer."""
             templates = Jinja2Templates(
-                directory="",
-                loader=jinja2.ChoiceLoader([jinja2.PackageLoader(__package__, ".")]),
+                directory="titiler/xarray",
             )
             if url:
                 tilejson_url = self.url_for(
@@ -623,7 +621,7 @@ class ZarrTilerFactory(BaseTilerFactory):
                         "request": request,
                         "tilejson_endpoint": tilejson_url,
                         "tms": tms,
-                        "resolutions": [tms._resolution(matrix) for matrix in tms],
+                        "resolutions": [matrix.cellSize for matrix in tms],
                     },
                     media_type="text/html",
                 )
