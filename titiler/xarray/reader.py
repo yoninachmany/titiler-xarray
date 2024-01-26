@@ -36,7 +36,7 @@ def parse_protocol(src_path: str, reference: Optional[bool] = False, arraylake_r
     # override protocol if reference
     if reference:
         protocol = "reference"
-    if arraylake_repo:
+    if "https://app.earthmover.io" in src_path or arraylake_repo:
         protocol = "arraylake"
     return protocol
 
@@ -110,6 +110,15 @@ def xarray_open_dataset(
 
     protocol = parse_protocol(src_path, reference=reference, arraylake_repo=arraylake_repo)
     xr_engine = xarray_engine(src_path)
+    # URL parsing.
+    if "https://app.earthmover.io" in src_path:
+        parts = src_path.replace("https://app.earthmover.io/", "").split("/", 4)
+        org, repo_name, tree_or_array, arraylake_ref, arraylake_group = parts
+        arraylake_repo = "/".join([org, repo_name])
+        if tree_or_array == "array":
+            arraylake_group = "/".join(arraylake_group.split("/")[:-1])
+    else:
+        arraylake_group = None
     file_handler = get_filesystem(src_path, protocol, xr_engine, arraylake_repo=arraylake_repo, arraylake_ref=arraylake_ref)
 
     # Arguments for xarray.open_dataset
@@ -136,7 +145,7 @@ def xarray_open_dataset(
         xr_open_args["consolidated"] = False
         xr_open_args["backend_kwargs"] = {"consolidated": False}
     if protocol == "arraylake":
-        xr_open_args["group"] = src_path
+        xr_open_args["group"] = arraylake_group or src_path
         xr_open_args["engine"] = "zarr"
         xr_open_args["zarr_version"] = 3
         xr_open_args["consolidated"] = False
